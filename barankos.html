@@ -1,0 +1,180 @@
+<html>
+
+<head>
+  <title>Barankos</title>
+</head>
+
+<body>
+  <div class="container">
+    <div class="svg-container">
+      <svg xmlns="http://www.w3.org/2000/svg" x="1000" y="1000" viewBox="0 0 1000 1000" preserveAspectRatio="xMinYMin">
+        <g transform="translate(500 500)" id="svg-path-group"></g>
+      </svg>
+    </div>
+  </div>
+
+  <div id="messages"></div>
+
+  <style>
+    html {
+      height: 100%;
+    }
+
+    body {
+      height: 100%;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .svg-container {
+      width: 300px;
+      height: 300px;
+      background: lightblue;
+    }
+
+    svg path {
+      fill: orange;
+      stroke: grey;
+    }
+
+    svg path:hover {
+      fill: yellow;
+      cursor: pointer;
+    }
+
+    #messages {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100px;
+      width: 100px;
+    }
+  </style>
+
+  <script>
+    const sectionConfigsMock = [
+      {
+        size: 0.67,
+        text: "Lorem ipsum"
+      },
+      {
+        size: 1,
+        text: "Dolor sit amet"
+      },
+      {
+        size: 3.5,
+        text: "Lorem ipsum"
+      },
+      {
+        size: 1.6,
+        text: "Dolor sit amet"
+      },
+    ];
+
+    const outerRadiusMock = 500;
+
+    const innerRadiusMock = 150;
+
+    const calculateRelativeSizes = sectionConfigs => {
+      const smallestSize = sectionConfigs.reduce(
+        (currentMinValue, sectionConfig) =>
+        Math.min(currentMinValue, sectionConfig.size),
+        sectionConfigs[0].size
+      );
+
+      sectionConfigs.forEach(sectionConfig => {
+        sectionConfig.relativeSize = sectionConfig.size / smallestSize;
+      });
+    }
+
+    const calculateAbsoluteSizes = sectionConfigs => {
+      const totalRelativeSize = sectionConfigs.reduce((total, sectionConfig) =>
+        total + sectionConfig.relativeSize,
+        0
+      )
+
+      const unitSize = 2 * Math.PI / totalRelativeSize;
+
+      sectionConfigs.forEach(sectionConfig => {
+        sectionConfig.absoluteSize = sectionConfig.relativeSize * unitSize;
+      });
+    }
+
+    const calculateSectionEdges = sectionConfigs => {
+      let currentAngle = 0;
+
+      sectionConfigs.forEach(sectionConfig => {
+        sectionConfig.xLeft = Math.sin(currentAngle);
+        sectionConfig.yLeft = Math.cos(currentAngle);
+
+        currentAngle += sectionConfig.absoluteSize;
+
+        sectionConfig.xRight = Math.sin(currentAngle);
+        sectionConfig.yRight = Math.cos(currentAngle);
+
+        sectionConfig.inverse = sectionConfig.absoluteSize > Math.PI;
+      })
+    }
+
+    const generatePath = ({
+        yLeft,
+        xLeft,
+        yRight,
+        xRight,
+        inverse
+      }, outerRadius, innerRadius) =>
+      `
+    M ${xLeft * outerRadius} ${yLeft * outerRadius}
+    L ${xLeft * innerRadius} ${yLeft * innerRadius}
+    A ${innerRadius} ${innerRadius} 0 ${inverse ? 1 : 0} 0 ${xRight * innerRadius} ${yRight * innerRadius}
+    L ${xRight * outerRadius} ${yRight * outerRadius}
+    A ${outerRadius} ${outerRadius} 0 ${inverse ? 1 : 0} 1 ${xLeft * outerRadius} ${yLeft * outerRadius}
+    Z
+  `;
+
+    const createPathElement = (sectionConfig, outerRadius, innerRadius) => {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+      element.setAttribute("d", generatePath(sectionConfig, outerRadius, innerRadius));
+      element.setAttribute("stroke", "#f00");
+      element.setAttribute("stroke-width", "1");
+      element.setAttribute("fill-rule", "evenodd");
+
+      element.addEventListener("click", () => {
+        const messagesContainer = document.getElementById("messages");
+        messagesContainer.innerHTML = `Clicked: ${sectionConfig.text}`;
+      })
+
+      return element;
+    }
+
+    const generateDoughnutSections = (sectionConfigs, outerRadius, innerRadius) => {
+      calculateRelativeSizes(sectionConfigs);
+      calculateAbsoluteSizes(sectionConfigs);
+      calculateSectionEdges(sectionConfigs);
+
+      const fragment = document.createDocumentFragment();
+
+      sectionConfigs.forEach(sectionConfig => {
+        fragment.appendChild(createPathElement(
+          sectionConfig,
+          outerRadius,
+          innerRadius
+        ));
+      });
+
+      document.getElementById("svg-path-group").appendChild(fragment);
+    }
+
+    generateDoughnutSections(sectionConfigsMock, outerRadiusMock, innerRadiusMock);
+  </script>
+</body>
+
+</html>
